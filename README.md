@@ -4,7 +4,9 @@ PHP 8.4 · Laravel · PostgreSQL 16 · Docker Compose · PHPUnit (SQLite in-memo
 ## Getting started
 ```bash
 cp .env.example .env
-docker compose up -d --build
+docker compose build
+docker compose run --rm app composer install
+docker compose up -d
 docker compose exec app php artisan key:generate
 docker compose exec app php artisan migrate
 ```
