@@ -6,12 +6,13 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
 
 class OrderService
 {
     public function createOrderWithItems(array $validated): Order {
-        return DB::transaction(function () use ($validated) {
+        $order = DB::transaction(function () use ($validated) {
             $order = Order::create([
                 'customer_id' => $validated['customer_id'],
                 'payment_id' => $validated['payment_id'],
@@ -43,10 +44,14 @@ class OrderService
 
             return $order;
         });
+
+        Cache::tags(['orders'])->flush();
+
+        return $order;
     }
 
     public function updateOrder(Order $order, array $validated): Order {
-        return DB::transaction(function () use ($order, $validated) {
+        $order = DB::transaction(function () use ($order, $validated) {
             // Update Order
             $orderData = collect($validated)
                 ->except('items')
@@ -108,5 +113,9 @@ class OrderService
 
             return $order;
         });
+
+        Cache::tags(['orders'])->flush();
+
+        return $order;
     }
 }

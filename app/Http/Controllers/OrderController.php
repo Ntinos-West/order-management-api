@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Cache;
 
 use App\Models\Order;
 
@@ -33,28 +34,33 @@ class OrderController extends Controller
             $sort = substr($sort, 1);
         }
 
-        $orders = Order::with([
-            'customer',
-            'payment',
-            'orderItems'
-        ])
-        ->when($request->search, function ($query) use ($request) {
-            $search = $request->search;
+        $params = $request->only(['status', 'sort', 'search', 'page']);
+        ksort($params);
+        $key = 'orders.index.' . md5(json_encode($params));
 
-            $query->where(function ($query) use ($search) {
-                $query->where('number', 'like', "%{$search}%")
-                    ->orWhereHas('customer', function ($query) use ($search) {
-                        $query->where('name', 'like', "%{$search}%")
-                                ->orWhere('surname', 'like', "%{$search}%");
-                    });
-            });
-        })
-        ->when($request->status, function ($query, $status) {
-            $query->where('status', $status);
-        })
-        ->orderBy($sort, $direction)
-        ->paginate(10);
+        $orders = Cache::tags(['orders'])->remember($key, 60, function () use ($request, $sort, $direction) {
+            return Order::with([
+                'customer',
+                'payment',
+                'orderItems'
+            ])
+            ->when($request->search, function ($query) use ($request) {
+                $search = $request->search;
 
+                $query->where(function ($query) use ($search) {
+                    $query->where('number', 'like', "%{$search}%")
+                        ->orWhereHas('customer', function ($query) use ($search) {
+                            $query->where('name', 'like', "%{$search}%")
+                                    ->orWhere('surname', 'like', "%{$search}%");
+                        });
+                });
+            })
+            ->when($request->status, function ($query, $status) {
+                $query->where('status', $status);
+            })
+            ->orderBy($sort, $direction)
+            ->paginate(10);
+        });
         return OrderResource::collection($orders);
     }
 
@@ -96,6 +102,8 @@ class OrderController extends Controller
 
     public function destroy(Order $order) {
         $order->delete();
+
+        Cache::tags(['orders'])->flush();
 
         return response()->json([
             'ok' => 1,
