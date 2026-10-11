@@ -409,4 +409,29 @@ class OrderControllerTest extends TestCase
             'tm' => now()->format('H:i:s'),
         ]);
     }
+
+    public function test_it_clears_the_orders_cache_when_an_order_is_updated(): void {
+        $customer = $this->createCustomer();
+        $payment = $this->createPayment();
+        $order = $this->createOrder($customer, $payment, 1001, 'Test order');
+
+        $this->getJson('/api/orders')->assertJsonPath('data.0.status', 'created');
+
+        $this->putJson("/api/orders/{$order->id}", ['status' => 'completed']);
+
+        $this->getJson('/api/orders')->assertJsonPath('data.0.status', 'completed');
+    }
+
+    public function test_it_serves_the_orders_list_from_cache(): void {
+        $customer = $this->createCustomer();
+        $payment = $this->createPayment();
+        $order = $this->createOrder($customer, $payment, 1001, 'Test order');
+
+        $this->getJson('/api/orders')->assertJsonPath('data.0.status', 'created');
+
+        // Change the database directly, bypassing the service that clears the cache
+        $order->update(['status' => 'completed']);
+
+        $this->getJson('/api/orders')->assertJsonPath('data.0.status', 'created');
+    }
 }
