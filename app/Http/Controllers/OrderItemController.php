@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+
 use App\Models\OrderItem;
 
 class OrderItemController extends Controller
@@ -49,14 +51,22 @@ class OrderItemController extends Controller
             'order_id' => 'required|integer|exists:orders,id',
             'vat_code' => 'required|integer|exists:vats,code',
             'name' => 'required|string',
-            'price' => 'numeric',
-            'quantity' => 'numeric',
-            'discount' => 'numeric'
+            'price' => 'required|numeric|min:0',
+            'quantity' => 'required|numeric|min:1',
+            'discount' => 'numeric|min:0|max:100'
         ]);
 
-        $validated['total'] = $request['quantity'] * $request['price'] * ((100 - $request['discount']) / 100);
+        $validated['discount'] ??= 0;
+
+        $validated['total'] = OrderItem::calculateTotal(
+            $validated['quantity'],
+            $validated['price'],
+            $validated['discount']
+        );
 
         $order_item = OrderItem::create($validated);
+
+        Cache::tags(['orders'])->flush();
 
         $ret_array['data'] = $order_item;
 
@@ -82,14 +92,20 @@ class OrderItemController extends Controller
             'order_id' => 'integer|exists:orders,id',
             'vat_code' => 'integer|exists:vats,code',
             'name' => 'string',
-            'price' => 'numeric',
-            'quantity' => 'numeric',
-            'discount' => 'numeric'
+            'price' => 'numeric|min:0',
+            'quantity' => 'numeric|min:1',
+            'discount' => 'numeric|min:0|max:100'
         ]);
 
-        $validated['total'] = $request['quantity'] * $request['price'] * ((100 - $request['discount']) / 100);
+        $quantity = $validated['quantity'] ?? $order_item->quantity;
+        $price    = $validated['price'] ?? $order_item->price;
+        $discount = $validated['discount'] ?? $order_item->discount ?? 0;
+
+        $validated['total'] = OrderItem::calculateTotal($quantity, $price, $discount);
 
         $order_item->update($validated);
+
+        Cache::tags(['orders'])->flush();
 
         $ret_array['data'] = $order_item;
 
@@ -111,6 +127,8 @@ class OrderItemController extends Controller
         }
 
         $order_item->delete();
+
+        Cache::tags(['orders'])->flush();
 
         $ret_array['data'] = $order_item;
 
