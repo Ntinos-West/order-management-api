@@ -6,6 +6,7 @@ services:
     volumes:
       - .:/var/www/html
     command: php artisan serve --host=0.0.0.0 --port=8000
+    restart: always
     ports:
       - "8000:8000"
     depends_on:
@@ -14,9 +15,11 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: always
 
   postgres:
     image: postgres:16
+    restart: always
     environment:
       POSTGRES_DB: order_management
       POSTGRES_USER: order_user

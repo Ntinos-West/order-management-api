@@ -21,6 +21,11 @@ feature tests and a Docker Compose setup.
 ## Tech stack
 PHP 8.4 · Laravel · PostgreSQL 16 · Redis 7 · Docker Compose · PHPUnit (SQLite in-memory and array cache for tests)
 
+## Docker
+The app, postgres and redis services use the always restart policy, allowing Docker to automatically restart containers if they stop or the Docker daemon restarts. Manually stopped containers may also be restarted when Docker restarts.
+
+Docker Desktop must be running for the services to operate.
+
 ## Getting started
 ```bash
 cp .env.example .env
